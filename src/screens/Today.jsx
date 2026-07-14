@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { rpc } from '../lib/api.js';
-import { todayStr, daysBetween } from '../../shared/normalize.js';
+import { todayStr } from '../../shared/normalize.js';
 import { useApp } from '../App.jsx';
 import { Card, PrivateBadge, SharedBadge } from '../components/ui.jsx';
 import DinnerEditor from '../components/DinnerEditor.jsx';
@@ -9,9 +9,18 @@ import ShareSync from '../components/ShareSync.jsx';
 
 export default function Today() {
   const { state } = useApp();
-  const date = todayStr();
+  const [date, setDate] = useState(todayStr());
   const [day, setDay] = useState(null);
   const [peers, setPeers] = useState([]);
+
+  // Roll over to the new day if the app stays open past midnight or is
+  // brought back from the background on the next morning.
+  useEffect(() => {
+    const check = () => setDate(todayStr());
+    document.addEventListener('visibilitychange', check);
+    const timer = setInterval(check, 60_000);
+    return () => { document.removeEventListener('visibilitychange', check); clearInterval(timer); };
+  }, []);
 
   const load = useCallback(async () => {
     const [d, p] = await Promise.all([rpc('getDay', { date }), rpc('getPeers')]);
@@ -46,7 +55,9 @@ export default function Today() {
           {peers.length === 0
             ? 'No exchanges yet — share a sync bundle to get started.'
             : peers.map((p) => {
-              const days = p.last_exchange_at ? daysBetween(p.last_exchange_at.slice(0, 10), todayStr()) : null;
+              const days = p.last_exchange_at
+                ? Math.max(0, Math.floor((Date.now() - new Date(p.last_exchange_at).getTime()) / 86400000))
+                : null;
               return (
                 <p key={p.device_id}>
                   Last exchange with {p.name || 'partner'}: {days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`}

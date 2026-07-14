@@ -23,6 +23,14 @@ migrate(db);
 
 const app = express();
 app.use(express.json({ limit: '25mb' }));
+// Malformed JSON should come back as a normal RPC error envelope, not an HTML
+// error page the client would misread as "server unreachable".
+app.use((err, _req, res, next) => {
+  if (err?.type === 'entity.parse.failed' || err?.type === 'entity.too.large') {
+    return res.status(400).json({ ok: false, error: 'Invalid request body' });
+  }
+  next(err);
+});
 
 app.post('/api/rpc', (req, res) => {
   const { method, args } = req.body || {};

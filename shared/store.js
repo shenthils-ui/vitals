@@ -206,6 +206,7 @@ export function saveCheckin(db, { date, mood, energy = null, note = null, sympto
   if (!date) throw new Error('date is required');
   const m = Number(mood);
   if (!(m >= 1 && m <= 5)) throw new Error('mood must be 1..5');
+  if (energy != null && !(Number(energy) >= 1 && Number(energy) <= 5)) throw new Error('energy must be 1..5');
   const run = db.transaction(() => {
     const existing = db.prepare('SELECT checkin_id FROM checkins WHERE date = ?').get(date);
     let id;
@@ -310,7 +311,7 @@ export function importGrocery(db, { payload }) {
     for (const r of rows) {
       const date = r.date;
       const item = r.item_name ?? r.item ?? r.name;
-      if (!date || !item) { skipped++; continue; }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date)) || !item) { skipped++; continue; }
       const qty = r.qty ?? null;
       const price = r.price_cents ?? null;
       const store = r.store ?? null;
@@ -567,16 +568,18 @@ export function applyBundle(db, { text }) {
   const run = db.transaction(() => {
     // Cross-device dish matching: by dish_id if present, else by normalized
     // name (create if missing). idMap translates remote ids to local ids.
+    const localByNorm = new Map(db.prepare('SELECT dish_id, name FROM dishes').all()
+      .map((r) => [normalizeName(r.name), r.dish_id]));
     const idMap = {};
     for (const d of p.dishes || []) {
       const byId = db.prepare('SELECT dish_id FROM dishes WHERE dish_id = ?').get(d.dish_id);
       if (byId) { idMap[d.dish_id] = d.dish_id; continue; }
-      const local = db.prepare('SELECT dish_id, name FROM dishes').all()
-        .find((r) => normalizeName(r.name) === normalizeName(d.name));
-      if (local) { idMap[d.dish_id] = local.dish_id; continue; }
+      const localId = localByNorm.get(normalizeName(d.name));
+      if (localId) { idMap[d.dish_id] = localId; continue; }
       db.prepare('INSERT OR IGNORE INTO dishes (dish_id, name, meal_type, is_restaurant, created_at) VALUES (?, ?, ?, ?, ?)')
         .run(d.dish_id, d.name, d.meal_type || 'dinner', d.is_restaurant ? 1 : 0, nowIso());
       idMap[d.dish_id] = d.dish_id;
+      localByNorm.set(normalizeName(d.name), d.dish_id);
       addedDishes++;
       for (const di of (p.dish_ingredients || []).filter((x) => x.dish_id === d.dish_id)) {
         addIngredientRow(db, d.dish_id, di.ingredient_name);
@@ -624,9 +627,12 @@ export function importBackup(db, { data }) {
   const run = db.transaction(() => {
     for (const t of ALL_TABLES) db.prepare(`DELETE FROM ${t}`).run();
     for (const t of ALL_TABLES) {
+      // Only real column names may enter the SQL text — a hand-crafted backup
+      // file must not be able to inject into the INSERT statement.
+      const columns = new Set(db.pragma(`table_info(${t})`).map((c) => c.name));
       const rows = backup.tables?.[t] || [];
       for (const row of rows) {
-        const keys = Object.keys(row);
+        const keys = Object.keys(row).filter((k) => columns.has(k));
         if (!keys.length) continue;
         db.prepare(`INSERT INTO ${t} (${keys.join(', ')}) VALUES (${keys.map(() => '?').join(', ')})`)
           .run(...keys.map((k) => row[k] ?? null));

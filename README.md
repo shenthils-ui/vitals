@@ -73,10 +73,13 @@ private check-ins on that phone). Do this on both phones.
   search; "New dish" creates one and asks for its main ingredients — tagged
   once, reused forever). A toggle marks restaurant/takeaway meals.
 - **Today → Check-in**: tap a mood face (1–5), optionally energy and symptom
-  tags, save. The 🔒 marker means it stays on this phone.
+  tags, save. The 🔒 marker means it stays on this phone. "Clear this day's
+  check-in" removes it again.
 
-Past days can be added or edited from **History**. That's it — anything
-heavier (calories, weighing, snack logging) is deliberately out of scope.
+Each logged dinner can carry a short **note** (e.g. "extra chilli") — this is
+shared household data. Past days can be added or edited from **History**.
+That's it — anything heavier (calories, weighing, snack logging) is
+deliberately out of scope.
 
 ## Syncing the two phones
 
@@ -129,6 +132,8 @@ npm run verify              # full Playwright verification of the standalone
 npm run verify:server       # end-to-end verification of the server build
 node scripts/make-icons.mjs # regenerate the PNG app icons
 ```
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the release history.
 
 ### Architecture
 

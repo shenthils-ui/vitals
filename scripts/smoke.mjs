@@ -105,4 +105,13 @@ if (JSON.stringify(restored.tables.meals) !== JSON.stringify(a.backup.tables.mea
   throw new Error('backup round-trip mismatch');
 }
 
+// hardening: a hand-crafted backup with a malicious column name must not
+// break the INSERT — the bad key is ignored, real columns still import.
+const evil = call(native, 'exportBackup');
+evil.tables.symptoms = [{ id: 999, tag: 'Injected', archived: 0, 'x) ; DROP TABLE dishes; --': 1 }];
+call(wasm, 'importBackup', { data: evil });
+const afterEvil = call(wasm, 'exportBackup');
+if (!afterEvil.tables.dishes.length) throw new Error('SECURITY: backup injection dropped a table');
+if (!afterEvil.tables.symptoms.find((s) => s.tag === 'Injected')) throw new Error('valid columns should still import');
+
 console.log('SMOKE OK: both engines pass the shared-logic scenario');
