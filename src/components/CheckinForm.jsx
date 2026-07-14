@@ -102,12 +102,27 @@ export default function CheckinForm({ date, existing, onSaved }) {
         value={note}
         onChange={(e) => setNote(e.target.value)}
         placeholder="Private note (optional)"
+        aria-label="Private note"
         rows={2}
         className="w-full px-3 py-2 rounded-xl border border-slate-300 text-base mb-3"
       />
       <Button onClick={save} disabled={!mood || busy} data-testid="save-checkin" className="w-full">
         {savedFlash ? 'Saved ✓' : existing ? 'Update check-in' : 'Save check-in'}
       </Button>
+      {existing && (
+        <button
+          type="button"
+          data-testid="clear-checkin"
+          className="w-full mt-2 py-2 text-sm text-slate-400"
+          onClick={async () => {
+            if (!confirm('Remove this day’s check-in from this phone?')) return;
+            await rpc('deleteCheckin', { date });
+            onSaved?.();
+          }}
+        >
+          Clear this day’s check-in
+        </button>
+      )}
     </div>
   );
 }

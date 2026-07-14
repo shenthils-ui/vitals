@@ -110,6 +110,23 @@ try {
   ok('data persisted after full reload', day1b.meals.length === 1 && day1b.checkin?.mood === 4);
   ok('reloaded dinner visible in UI', await A.page.locator('[data-testid="dinner-logged"]').textContent().then((t) => t.includes('Dal with rice')));
 
+  // ============ meal note (shared) + clear check-in (private) ============
+  console.log('\n[meal notes & clear check-in]');
+  await A.page.click('[data-testid="dinner-logged"] >> text=Note');
+  await A.page.fill('[data-testid="meal-note-input"]', 'extra chilli tonight');
+  await A.page.click('[data-testid="save-meal-note"]');
+  await A.page.waitForFunction(() => document.querySelector('[data-testid="dinner-logged"]')?.textContent.includes('extra chilli tonight'));
+  ok('dinner note saved and shown (shared data)', (await rpcA('getDay', { date: today })).meals[0].note === 'extra chilli tonight');
+  A.page.once('dialog', (d) => d.accept());
+  await A.page.click('[data-testid="clear-checkin"]');
+  await A.page.waitForFunction(() => !document.querySelector('[data-testid="save-checkin"]')?.textContent.includes('Update'));
+  ok('check-in cleared from this phone', (await rpcA('getDay', { date: today })).checkin === null);
+  // restore a check-in for the rest of the run
+  await A.page.click('[data-testid="mood-4"]');
+  await A.page.getByTestId('checkin-form').getByRole('button', { name: 'Headache', exact: true }).click();
+  await A.page.click('[data-testid="save-checkin"]');
+  await A.page.waitForFunction(() => document.querySelector('[data-testid="save-checkin"]')?.textContent.includes('Saved'));
+
   // ============ Acceptance 2 + 3 setup: more shared data on A ============
   const chili = await rpcA('createDish', { name: 'Chili night', ingredients: ['chili', 'tomato'] });
   for (const off of [3, 8, 13, 18]) {

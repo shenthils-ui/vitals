@@ -61,7 +61,7 @@ function Layout({ children }) {
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
       <div className="max-w-lg mx-auto px-4 pt-4">{children}</div>
-      <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 shadow-[0_-1px_8px_rgba(0,0,0,0.04)]">
+      <nav aria-label="Primary" className="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 shadow-[0_-1px_8px_rgba(0,0,0,0.04)] pb-[env(safe-area-inset-bottom)]">
         <div className="max-w-lg mx-auto grid grid-cols-5">
           {NAV.map((n) => (
             <NavLink
@@ -69,10 +69,14 @@ function Layout({ children }) {
               to={n.to}
               end={n.end}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-0.5 py-2.5 text-xs font-medium ${isActive ? 'text-teal-700' : 'text-slate-500'}`}
+                `flex flex-col items-center gap-0.5 py-2.5 text-xs font-medium min-h-[56px] justify-center ${isActive ? 'text-teal-700' : 'text-slate-500'}`}
             >
-              <span className="text-xl leading-none">{n.icon}</span>
-              {n.label}
+              {({ isActive }) => (
+                <>
+                  <span className="text-xl leading-none" aria-hidden="true">{n.icon}</span>
+                  <span aria-current={isActive ? 'page' : undefined}>{n.label}</span>
+                </>
+              )}
             </NavLink>
           ))}
         </div>
