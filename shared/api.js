@@ -37,5 +37,3 @@ export function call(db, method, args = {}) {
   if (!fn) throw new Error(`Unknown RPC method: ${method}`);
   return fn(db, args);
 }
-
-export const METHOD_NAMES = Object.keys(METHODS);
